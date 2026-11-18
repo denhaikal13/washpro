@@ -219,7 +219,7 @@ const MIME_TYPES = {
 };
 
 // Server Handler
-const server = http.createServer(async (req, res) => {
+const handler = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
@@ -230,7 +230,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = reqUrl.pathname;
+  const pathname = reqUrl.searchParams.get('route') || reqUrl.pathname;
 
   // 1. API ROUTES
   if (pathname.startsWith('/api/')) {
@@ -391,7 +391,9 @@ const server = http.createServer(async (req, res) => {
       res.end(content, 'utf-8');
     }
   });
-});
+};
+
+const server = http.createServer(handler);
 
 getDB();
 
@@ -402,4 +404,4 @@ if (!isVercel) {
   });
 }
 
-export default server;
+export default handler;

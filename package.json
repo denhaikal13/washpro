@@ -2,11 +2,11 @@
   "name": "washpro-system",
   "version": "1.0.0",
   "description": "Sistem Manajemen Laundry Kiloan & Kurir Penjemputan Terintegrasi",
-  "main": "server.js",
+  "main": "api/index.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node api/index.js",
+    "dev": "node api/index.js"
   },
   "keywords": ["laundry", "management", "pos", "courier", "dispatch", "pwa"],
   "author": "WashPro Engineering Team",
