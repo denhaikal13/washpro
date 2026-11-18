@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WashPro - Sistem Manajemen Laundry & Kurir Penjemputan</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & Space Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Space Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Styling khusus struk thermal kasir */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #thermal-receipt-print-area, #thermal-receipt-print-area * {
+        visibility: visible;
+      }
+      #thermal-receipt-print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 80mm;
+        margin: 0;
+        padding: 5mm;
+      }
+    }
+    .thermal-receipt {
+      font-family: 'Space Mono', monospace;
+      background: #fff;
+      color: #000;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ================= TOP NAVIGATION & ROLE SWITCHER ================= -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo WashPro -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+            <i data-lucide="waves" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl font-black tracking-tight text-slate-900">Wash<span class="text-brand-600">Pro</span></span>
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full border border-brand-200">MVP 1.0</span>
+            </div>
+            <p class="text-xs text-slate-500 hidden sm:block">Smart Laundry & Courier Dispatching</p>
+          </div>
+        </div>
+
+        <!-- Role Switcher Pills -->
+        <nav class="flex items-center gap-1 sm:gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80">
+          <button onclick="switchRole('customer')" id="role-btn-customer" class="role-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all bg-white text-brand-700 shadow-sm">
+            <i data-lucide="user" class="w-4 h-4"></i>
+            <span>Pelanggan</span>
+          </button>
+          <button onclick="switchRole('courier')" id="role-btn-courier" class="role-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all text-slate-600 hover:text-slate-900">
+            <i data-lucide="bike" class="w-4 h-4"></i>
+            <span>Kurir</span>
+          </button>
+          <button onclick="switchRole('cashier')" id="role-btn-cashier" class="role-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all text-slate-600 hover:text-slate-900">
+            <i data-lucide="store" class="w-4 h-4"></i>
+            <span>Kasir POS</span>
+          </button>
+          <button onclick="switchRole('admin')" id="role-btn-admin" class="role-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all text-slate-600 hover:text-slate-900">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Admin</span>
+          </button>
+        </nav>
+
+        <!-- Right Quick Controls -->
+        <div class="flex items-center gap-2">
+          <button onclick="resetDemoData()" title="Reset data simulasi ke awal" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all text-xs flex items-center gap-1">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span class="hidden md:inline">Reset Demo</span>
+          </button>
+          <div class="h-4 w-px bg-slate-200"></div>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="hidden sm:inline">Online</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= NOTIFICATION TOAST ================= -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- ================= MAIN CONTENT WRAPPER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ======================================================== -->
+    <!-- 1. MODUL PELANGGAN (CUSTOMER PORTAL) -->
+    <!-- ======================================================== -->
+    <section id="module-customer" class="role-section space-y-8">
+      <!-- Hero Banner -->
+      <div class="bg-gradient-to-r from-brand-800 via-brand-700 to-sky-600 rounded-2xl p-6 sm:p-8 text-white shadow-xl shadow-brand-900/10 relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+          <i data-lucide="shirt" class="w-72 h-72"></i>
+        </div>
+        <div class="max-w-2xl relative z-10">
+          <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold mb-3">Layanan Jemput & Antar Gratis</span>
+          <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-2">Laundry Bersih, Wangi & Tanpa Ribet</h1>
+          <p class="text-brand-100 text-sm sm:text-base mb-6">Pesan penjemputan dari rumah, pantau proses pencucian secara real-time, dan terima pakaian rapi di depan pintu Anda.</p>
+          <button onclick="document.getElementById('form-pickup-section').scrollIntoView({ behavior: 'smooth' })" class="px-5 py-2.5 bg-white text-brand-800 hover:bg-brand-50 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2">
+            <i data-lucide="calendar-plus" class="w-4 h-4 text-brand-600"></i>
+            <span>Pesan Penjemputan Sekarang</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Tracking Card -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-brand-600 animate-ping"></span>
+              <h2 class="text-lg font-bold text-slate-900">Pelacakan Pesanan Real-Time</h2>
+            </div>
+            <p class="text-xs text-slate-500">Status terkini laundry yang sedang diproses di outlet</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500">Pilih Pesanan:</span>
+            <select id="customer-order-selector" onchange="renderCustomerTracking(this.value)" class="text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <!-- Filled dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Order Stepper Container -->
+        <div id="customer-tracking-content" class="mt-6">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Grid: Form Pemesanan + Riwayat Nota -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Form Pemesanan Penjemputan -->
+        <div id="form-pickup-section" class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
+              <i data-lucide="truck" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">Form Pemesanan Antar-Jemput</h3>
+              <p class="text-xs text-slate-500">Kurir kami akan datang sesuai jadwal yang Anda tentukan</p>
+            </div>
+          </div>
+
+          <form id="order-pickup-form" onsubmit="handleCustomerOrderSubmit(event)" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap</label>
+                <input type="text" id="cust-name" required placeholder="Contoh: Hendra Wijaya" class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor WhatsApp</label>
+                <input type="tel" id="cust-phone" required placeholder="081234567890" class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-semibold text-slate-700">Alamat Lengkap Penjemputan</label>
+                <button type="button" onclick="autoDetectAddress()" class="text-xs text-brand-600 hover:text-brand-800 font-medium flex items-center gap-1">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                  <span>Auto-detect GPS</span>
+                </button>
+              </div>
+              <textarea id="cust-address" required rows="2" placeholder="Nama Jalan, No. Rumah, RT/RW, Patokan..." class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Pilihan Layanan</label>
+                <select id="cust-service" required class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
+                  <!-- Filled dynamically -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Waktu Penjemputan</label>
+                <select id="cust-time-slot" required class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
+                  <option value="Hari ini - Pagi (08:00 - 11:00)">Hari ini - Pagi (08:00 - 11:00)</option>
+                  <option value="Hari ini - Siang (13:00 - 16:00)">Hari ini - Siang (13:00 - 16:00)</option>
+                  <option value="Hari ini - Sore (16:00 - 19:00)">Hari ini - Sore (16:00 - 19:00)</option>
+                  <option value="Besok - Pagi (08:00 - 11:00)">Besok - Pagi (08:00 - 11:00)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Khusus (Sensitif / Pisah Pakaian)</label>
+              <input type="text" id="cust-notes" placeholder="Contoh: Jangan dicampur kemeja putih, deterjen wangi lavender" class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+
+            <div class="pt-2">
+              <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>Konfirmasi & Kirim Kurir Penjemputan</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Riwayat Transaksi & Nota Digital -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="receipt" class="w-5 h-5 text-brand-600"></i>
+              <h3 class="font-bold text-slate-900 text-base">Riwayat & Nota Digital</h3>
+            </div>
+            <span class="text-xs text-slate-500" id="cust-history-count">0 Pesanan</span>
+          </div>
+
+          <div id="customer-orders-list" class="space-y-3 overflow-y-auto max-h-[460px] custom-scrollbar flex-1 pr-1">
+            <!-- Filled dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 2. MODUL KURIR (DRIVER / DELIVERY INTERFACE) -->
+    <!-- ======================================================== -->
+    <section id="module-courier" class="role-section hidden space-y-6">
+      <!-- Courier Profile Header -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-xl border border-amber-500/20">
+            <i data-lucide="bike" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold text-slate-900">Budi Santoso</h2>
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Kurir Aktif</span>
+            </div>
+            <p class="text-xs text-slate-500">Honda Vario (B 4521 ABC) &bull; Wilayah: Jakarta Selatan & Kebayoran</p>
+          </div>
+        </div>
+
+        <!-- Filter Tab -->
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+          <button onclick="filterCourierTasks('all')" id="cr-tab-all" class="cr-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-800 shadow-sm">Semua</button>
+          <button onclick="filterCourierTasks('pickup')" id="cr-tab-pickup" class="cr-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">Jemput Barang</button>
+          <button onclick="filterCourierTasks('delivery')" id="cr-tab-delivery" class="cr-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">Antar Barang</button>
+        </div>
+      </div>
+
+      <!-- Courier Tasks List -->
+      <div id="courier-tasks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 3. MODUL POS KASIR & OPERASIONAL OUTLET -->
+    <!-- ======================================================== -->
+    <section id="module-cashier" class="role-section hidden space-y-6">
+      
+      <!-- Outlet & Workshop Header Tabs -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <i data-lucide="scale" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Operasional Outlet & Kasir POS</h2>
+            <p class="text-xs text-slate-500">Penerimaan timbangan, pemrosesan mesin cuci, dan manajemen rak simpan</p>
+          </div>
+        </div>
+
+        <!-- Sub Tabs -->
+        <div class="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl text-xs font-semibold">
+          <button onclick="switchCashierSubTab('weighing')" id="cashier-tab-weighing" class="cashier-subtab px-3.5 py-2 rounded-lg bg-white text-brand-700 shadow-sm flex items-center gap-1.5">
+            <i data-lucide="scale" class="w-4 h-4"></i>
+            <span>Penimbangan & Nota</span>
+          </button>
+          <button onclick="switchCashierSubTab('workshop')" id="cashier-tab-workshop" class="cashier-subtab px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="washing-machine" class="w-4 h-4"></i>
+            <span>Mesin & Rak Simpan</span>
+          </button>
+          <button onclick="switchCashierSubTab('tariffs')" id="cashier-tab-tariffs" class="cashier-subtab px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="tag" class="w-4 h-4"></i>
+            <span>Daftar Tarif</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SubTab 1: Penimbangan & Kasir -->
+      <div id="cashier-view-weighing" class="space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">Antrean Penimbangan Barang Masuk</h3>
+              <p class="text-xs text-slate-500">Barang yang baru sampai dibawa kurir dari pelanggan dan siap ditimbang</p>
+            </div>
+            <span id="weighing-queue-count" class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">0 Menunggu</span>
+          </div>
+
+          <div id="weighing-queue-table-wrapper" class="overflow-x-auto">
+            <!-- Dynamic table -->
+          </div>
+        </div>
+      </div>
+
+      <!-- SubTab 2: Workshop & Rak Simpan -->
+      <div id="cashier-view-workshop" class="hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Column: Sedang Dicuci / Kering -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div class="flex items-center gap-2 text-sky-700 font-bold text-sm">
+                <i data-lucide="waves" class="w-4 h-4"></i>
+                <span>Sedang Cuci / Kering</span>
+              </div>
+              <span id="count-washing" class="text-xs px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 font-bold">0</span>
+            </div>
+            <div id="workshop-washing-list" class="space-y-3 min-h-[250px]">
+              <!-- Dynamic -->
+            </div>
+          </div>
+
+          <!-- Column: Sedang Disetrika -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div class="flex items-center gap-2 text-indigo-700 font-bold text-sm">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span>Sedang Disetrika</span>
+              </div>
+              <span id="count-ironing" class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold">0</span>
+            </div>
+            <div id="workshop-ironing-list" class="space-y-3 min-h-[250px]">
+              <!-- Dynamic -->
+            </div>
+          </div>
+
+          <!-- Column: Siap Diantar di Rak Simpan -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div class="flex items-center gap-2 text-emerald-700 font-bold text-sm">
+                <i data-lucide="package-check" class="w-4 h-4"></i>
+                <span>Siap di Rak Simpan</span>
+              </div>
+              <span id="count-ready" class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">0</span>
+            </div>
+            <div id="workshop-ready-list" class="space-y-3 min-h-[250px]">
+              <!-- Dynamic -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SubTab 3: Daftar Tarif Layanan -->
+      <div id="cashier-view-tariffs" class="hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">Katalog Layanan & Tarif Outlet</h3>
+              <p class="text-xs text-slate-500">Daftar harga kiloan dan satuan yang berlaku saat ini</p>
+            </div>
+          </div>
+          <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Dynamic services list -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 4. MODUL DASHBOARD ADMIN (MANAGEMENT & ANALYTICS) -->
+    <!-- ======================================================== -->
+    <section id="module-admin" class="role-section hidden space-y-6">
+      
+      <!-- Metrics Overview Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Pendapatan</p>
+            <h3 id="stat-revenue" class="text-2xl font-extrabold text-slate-900 mt-1">Rp 0</h3>
+            <span class="text-xs text-emerald-600 font-medium inline-flex items-center gap-1 mt-1">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> +12% dari kemarin
+            </span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="wallet" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Volume Tercuci</p>
+            <h3 id="stat-weight" class="text-2xl font-extrabold text-slate-900 mt-1">0 Kg</h3>
+            <span class="text-xs text-brand-600 font-medium inline-flex items-center gap-1 mt-1">
+              <i data-lucide="scale" class="w-3.5 h-3.5"></i> Kapasitas 65%
+            </span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+            <i data-lucide="waves" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pesanan Aktif</p>
+            <h3 id="stat-active-orders" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3>
+            <span class="text-xs text-amber-600 font-medium inline-flex items-center gap-1 mt-1">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i> Sedang Berjalan
+            </span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i data-lucide="shopping-bag" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kurir Bertugas</p>
+            <h3 id="stat-couriers" class="text-2xl font-extrabold text-slate-900 mt-1">2</h3>
+            <span class="text-xs text-purple-600 font-medium inline-flex items-center gap-1 mt-1">
+              <i data-lucide="bike" class="w-3.5 h-3.5"></i> Siap Penugasan
+            </span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dispatching & Manajemen Penugasan Kurir -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Manajemen Dispatching & Penugasan Kurir</h3>
+            <p class="text-xs text-slate-500">Tugaskan pesanan masuk ke kurir terdekat untuk penjemputan atau pengantaran</p>
+          </div>
+          <button onclick="exportToCSV()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Export Laporan Transaksi (CSV)</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
+                <th class="py-3 px-4">No. Order</th>
+                <th class="py-3 px-4">Pelanggan</th>
+                <th class="py-3 px-4">Alamat</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Kurir Penanggung Jawab</th>
+                <th class="py-3 px-4">Aksi Dispatch</th>
+              </tr>
+            </thead>
+            <tbody id="admin-orders-table-body" class="divide-y divide-slate-100">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: CETAK STRUK THERMAL (58mm / 80mm) -->
+  <!-- ======================================================== -->
+  <div id="modal-thermal-receipt" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200 flex flex-col">
+      <div class="px-5 py-3.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-slate-800 font-bold text-sm">
+          <i data-lucide="printer" class="w-4 h-4 text-brand-600"></i>
+          <span>Pratinjau Struk Thermal Kasir</span>
+        </div>
+        <button onclick="closeModal('modal-thermal-receipt')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Printable Area -->
+      <div class="p-5 overflow-y-auto max-h-[70vh] flex justify-center bg-slate-100/50">
+        <div id="thermal-receipt-print-area" class="thermal-receipt w-[280px] bg-white p-4 shadow-sm border border-slate-300 rounded text-xs space-y-3">
+          <!-- Receipt Content populated by JS -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-white border-t border-slate-200 flex items-center gap-2">
+        <button onclick="window.print()" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-2">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Cetak Struk Sekarang</span>
+        </button>
+        <button onclick="closeModal('modal-thermal-receipt')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: UPDATE WEIGHING (KASIR PENIMBANGAN) -->
+  <!-- ======================================================== -->
+  <div id="modal-weighing" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="scale" class="w-5 h-5 text-brand-600"></i>
+          <span>Penimbangan Aktual Outlet</span>
+        </h3>
+        <button onclick="closeModal('modal-weighing')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="weighing-form" onsubmit="handleWeighingSubmit(event)" class="space-y-4">
+        <input type="hidden" id="weigh-order-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500">Nomor Pesanan & Pelanggan</label>
+          <p id="weigh-order-info" class="text-sm font-bold text-slate-900 mt-0.5">-</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Berat Aktual Riil (Kg)</label>
+          <div class="relative">
+            <input type="number" step="0.05" id="weigh-actual-kg" required placeholder="0.00" oninput="calculateWeighingPrice()" class="w-full text-lg font-mono font-bold px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <span class="absolute right-4 top-3 text-sm font-bold text-slate-400">Kg</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1.5">
+          <div class="flex justify-between text-slate-600">
+            <span>Tarif Layanan:</span>
+            <span id="weigh-unit-price" class="font-semibold text-slate-800">Rp 0 / kg</span>
+          </div>
+          <div class="flex justify-between text-base font-bold text-slate-900 pt-1 border-t border-slate-200">
+            <span>Total Tagihan:</span>
+            <span id="weigh-total-price" class="text-brand-600">Rp 0</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Status Pembayaran</label>
+          <select id="weigh-payment-status" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white">
+            <option value="unpaid">Belum Lunas (Bayar Nanti / COD)</option>
+            <option value="paid">LUNAS (QRIS / Tunai Diterima)</option>
+          </select>
+        </div>
+
+        <div class="pt-2 flex items-center gap-2">
+          <button type="submit" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Simpan Berat & Masukkan Mesin Cuci</span>
+          </button>
+          <button type="button" onclick="closeModal('modal-weighing')" class="px-4 py-2.5 bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl">
+            Batal
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ASSIGN RACK (MASUKKAN RAK SIMPAN) -->
+  <!-- ======================================================== -->
+  <div id="modal-assign-rack" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="archive" class="w-5 h-5 text-brand-600"></i>
+          <span>Alokasi Rak Simpan</span>
+        </h3>
+        <button onclick="closeModal('modal-assign-rack')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="rack-form" onsubmit="handleRackSubmit(event)" class="space-y-4">
+        <input type="hidden" id="rack-order-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Nomor Rak Outlet</label>
+          <select id="rack-select" required class="w-full text-sm font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white">
+            <!-- Dynamic racks -->
+          </select>
+          <p class="text-[11px] text-slate-500 mt-1">Pakaian sudah rapi diplastik dan siap diambil kurir / pelanggan</p>
+        </div>
+
+        <div class="pt-2 flex items-center gap-2">
+          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span>Simpan di Rak & Tandai Siap Diantar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: KURIR BUKTI SERAH TERIMA & TTD DIGITAL -->
+  <!-- ======================================================== -->
+  <div id="modal-courier-delivery" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="check-check" class="w-5 h-5 text-emerald-600"></i>
+          <span>Bukti Serah Terima Pengantaran</span>
+        </h3>
+        <button onclick="closeModal('modal-courier-delivery')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="courier-delivery-form" onsubmit="handleCourierDeliverySubmit(event)" class="space-y-4">
+        <input type="hidden" id="delivery-order-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500">Penerima Barang</label>
+          <p id="delivery-customer-name" class="text-sm font-bold text-slate-900 mt-0.5">-</p>
+        </div>
+
+        <!-- Signature Canvas -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-700">Tanda Tangan Digital Pelanggan</label>
+            <button type="button" onclick="clearSignatureCanvas()" class="text-[11px] text-rose-600 hover:underline">Hapus / Ulangi</button>
+          </div>
+          <div class="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 overflow-hidden relative">
+            <canvas id="signature-canvas" width="380" height="150" class="w-full h-[140px] cursor-crosshair touch-none"></canvas>
+            <span class="absolute bottom-1 right-2 text-[10px] text-slate-400 pointer-events-none">Tanda tangan di area ini</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Konfirmasi Pembayaran</label>
+          <select id="delivery-payment-confirm" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white">
+            <option value="paid">Uang Tunai / COD Sudah Diterima Kurir (LUNAS)</option>
+            <option value="paid">Sudah Dibayar via QRIS / Transfer Online</option>
+          </select>
+        </div>
+
+        <div class="pt-2 flex items-center gap-2">
+          <button type="submit" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Selesaikan & Terbitkan Bukti Antar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // State
+    let currentRole = 'customer';
+    let orders = [];
+    let services = [];
+    let couriers = [];
+    let racks = [];
+    let courierFilter = 'all';
+
+    // Initialize Signature Pad
+    let canvas, ctx, isDrawing = false;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      initSignatureCanvas();
+      await fetchInitialData();
+      lucide.createIcons();
+    });
+
+    async function fetchInitialData() {
+      try {
+        const [ordRes, srvRes, crRes, rkRes, statRes] = await Promise.all([
+          fetch('/api/orders').then(r => r.json()),
+          fetch('/api/services').then(r => r.json()),
+          fetch('/api/couriers').then(r => r.json()),
+          fetch('/api/racks').then(r => r.json()),
+          fetch('/api/stats').then(r => r.json())
+        ]);
+
+        if (ordRes.success) orders = ordRes.data;
+        if (srvRes.success) services = srvRes.data;
+        if (crRes.success) couriers = crRes.data;
+        if (rkRes.success) racks = rkRes.data;
+
+        renderServicesDropdown();
+        renderCustomerTrackingSelector();
+        renderCustomerOrdersHistory();
+        renderCourierTasks();
+        renderCashierViews();
+        renderAdminDashboard(statRes.data);
+        renderRackOptions();
+        lucide.createIcons();
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        showToast('Gagal memuat data dari server', 'error');
+      }
+    }
+
+    // Role Switcher
+    function switchRole(role) {
+      currentRole = role;
+      document.querySelectorAll('.role-section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-brand-700', 'shadow-sm');
+        btn.classList.add('text-slate-600');
+      });
+
+      const targetSec = document.getElementById(`module-${role}`);
+      const targetBtn = document.getElementById(`role-btn-${role}`);
+      if (targetSec) targetSec.classList.remove('hidden');
+      if (targetBtn) {
+        targetBtn.classList.add('bg-white', 'text-brand-700', 'shadow-sm');
+        targetBtn.classList.remove('text-slate-600');
+      }
+
+      lucide.createIcons();
+    }
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // Toast Notifications
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? 'bg-slate-900 text-white' : 'bg-rose-600 text-white';
+      const icon = type === 'success' ? 'check-circle-2' : 'alert-circle';
+      toast.className = `${bg} px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      lucide.createIcons();
+      setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // -------------------------------------------------------------
+    // 1. CUSTOMER PORTAL LOGIC
+    // -------------------------------------------------------------
+    function renderServicesDropdown() {
+      const select = document.getElementById('cust-service');
+      select.innerHTML = services.map(s => `
+        <option value="${s.id}">${s.name} - Rp ${s.price.toLocaleString('id-ID')}/${s.unit}</option>
+      `).join('');
+    }
+
+    function autoDetectAddress() {
+      document.getElementById('cust-address').value = 'Jl. Senopati No. 45, RT 03/RW 02, Kebayoran Baru, Jakarta Selatan (Patokan: Depan Kafe Senopati)';
+      showToast('Lokasi GPS berhasil dideteksi otomatis!');
+    }
+
+    async function handleCustomerOrderSubmit(e) {
+      e.preventDefault();
+      const payload = {
+        customerName: document.getElementById('cust-name').value,
+        customerPhone: document.getElementById('cust-phone').value,
+        address: document.getElementById('cust-address').value,
+        serviceId: document.getElementById('cust-service').value,
+        scheduledPickup: document.getElementById('cust-time-slot').value,
+        notes: document.getElementById('cust-notes').value,
+      };
+
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+
+        if (res.success) {
+          showToast(`Pesanan ${res.data.orderNumber} berhasil dibuat!`);
+          document.getElementById('order-pickup-form').reset();
+          await fetchInitialData();
+          renderCustomerTracking(res.data.id);
+        }
+      } catch (err) {
+        showToast('Gagal membuat pesanan', 'error');
+      }
+    }
+
+    function renderCustomerTrackingSelector() {
+      const selector = document.getElementById('customer-order-selector');
+      if (orders.length === 0) {
+        selector.innerHTML = '<option value="">Belum ada pesanan</option>';
+        return;
+      }
+      selector.innerHTML = orders.map(o => `
+        <option value="${o.id}">${o.orderNumber} - ${o.customerName} (${formatStatusLabel(o.status)})</option>
+      `).join('');
+
+      renderCustomerTracking(orders[0]?.id);
+    }
+
+    function renderCustomerTracking(orderId) {
+      const order = orders.find(o => o.id === orderId) || orders[0];
+      const container = document.getElementById('customer-tracking-content');
+      if (!order) {
+        container.innerHTML = '<p class="text-xs text-slate-400 py-4">Belum ada data pesanan aktif.</p>';
+        return;
+      }
+
+      const steps = [
+        { key: 'pickup_scheduled', label: 'Penjemputan Dijadwalkan', desc: 'Kurir menuju lokasi jemput' },
+        { key: 'picked_up', label: 'Barang Dijemput', desc: 'Dibawa kurir ke outlet' },
+        { key: 'weighing', label: 'Penimbangan Kasir', desc: 'Pengecekan berat & tarif' },
+        { key: 'washing', label: 'Proses Cuci & Kering', desc: 'Mesin cuci aktif' },
+        { key: 'ironing', label: 'Setrika & Packing', desc: 'Setrika uap rapi & wangi' },
+        { key: 'ready_delivery', label: 'Siap di Rak Simpan', desc: order.rackNumber || 'Rak Outlet' },
+        { key: 'out_delivery', label: 'Diantar Kurir', desc: 'Kurir menuju rumah Anda' },
+        { key: 'completed', label: 'Selesai & Diterima', desc: 'Serah terima tuntas' }
+      ];
+
+      const currentIdx = steps.findIndex(s => s.key === order.status);
+      const activeStepIndex = currentIdx === -1 ? 0 : currentIdx;
+
+      container.innerHTML = `
+        <div class="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200/80 mb-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <span class="text-xs font-mono font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">${order.orderNumber}</span>
+              <h4 class="text-base font-bold text-slate-900 mt-1">${order.serviceName}</h4>
+              <p class="text-xs text-slate-500">${order.address}</p>
+            </div>
+            <div class="text-right sm:border-l sm:border-slate-200 sm:pl-4">
+              <span class="text-xs text-slate-400">Total Tagihan:</span>
+              <div class="text-lg font-black text-slate-900">Rp ${(order.totalAmount || 0).toLocaleString('id-ID')}</div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+                ${order.paymentStatus === 'paid' ? 'LUNAS' : 'MENUNGGU PEMBAYARAN'}
+              </span>
+            </div>
+          </div>
+
+          <!-- Stepper Visual -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 pt-2">
+            ${steps.map((step, idx) => {
+              const isPast = idx < activeStepIndex;
+              const isCurrent = idx === activeStepIndex;
+              let bg = 'bg-white border-slate-200 text-slate-400';
+              let badgeBg = 'bg-slate-200 text-slate-600';
+
+              if (isPast) {
+                bg = 'bg-emerald-50/60 border-emerald-300 text-emerald-800';
+                badgeBg = 'bg-emerald-600 text-white';
+              } else if (isCurrent) {
+                bg = 'bg-brand-50 border-brand-400 text-brand-900 ring-2 ring-brand-500/20';
+                badgeBg = 'bg-brand-600 text-white animate-bounce';
+              }
+
+              return `
+                <div class="p-2.5 rounded-xl border ${bg} flex flex-col justify-between text-left transition-all">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="w-5 h-5 rounded-full ${badgeBg} text-[10px] font-bold flex items-center justify-center">${idx + 1}</span>
+                    ${isPast ? '<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i>' : ''}
+                    ${isCurrent ? '<span class="w-2 h-2 rounded-full bg-brand-600 animate-ping"></span>' : ''}
+                  </div>
+                  <div>
+                    <p class="text-[11px] font-bold leading-tight">${step.label}</p>
+                    <p class="text-[9px] opacity-75 mt-0.5">${step.desc}</p>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function renderCustomerOrdersHistory() {
+      const list = document.getElementById('customer-orders-list');
+      document.getElementById('cust-history-count').innerText = `${orders.length} Pesanan`;
+
+      if (orders.length === 0) {
+        list.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Belum ada riwayat transaksi.</p>';
+        return;
+      }
+
+      list.innerHTML = orders.map(o => `
+        <div class="p-3.5 rounded-xl border border-slate-200 hover:border-brand-300 bg-white transition-all shadow-sm">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-mono text-xs font-bold text-brand-700">${o.orderNumber}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(o.status)}">
+              ${formatStatusLabel(o.status)}
+            </span>
+          </div>
+          <p class="text-xs font-bold text-slate-800">${o.serviceName}</p>
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">
+            <span>${o.actualWeight ? o.actualWeight + ' Kg' : 'Taksiran'} &bull; Rp ${(o.totalAmount || 0).toLocaleString('id-ID')}</span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="previewThermalReceipt('${o.id}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold flex items-center gap-1">
+                <i data-lucide="receipt" class="w-3 h-3"></i> Nota
+              </button>
+              <button onclick="shareToWhatsApp('${o.id}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold flex items-center gap-1">
+                <i data-lucide="message-circle" class="w-3 h-3"></i> WA
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function shareToWhatsApp(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      const text = `Halo ${order.customerName}, berikut ringkasan nota laundry WashPro:\nNo. Order: ${order.orderNumber}\nLayanan: ${order.serviceName}\nBerat: ${order.actualWeight || 0} Kg\nTotal: Rp ${(order.totalAmount || 0).toLocaleString('id-ID')}\nStatus: ${formatStatusLabel(order.status)}\nTerima kasih telah mempercayakan pakaian Anda di WashPro!`;
+      const url = `https://wa.me/${order.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    }
+
+    // -------------------------------------------------------------
+    // 2. MODUL KURIR (DRIVER LOGIC)
+    // -------------------------------------------------------------
+    function filterCourierTasks(type) {
+      courierFilter = type;
+      document.querySelectorAll('.cr-filter-btn').forEach(b => {
+        b.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+        b.classList.add('text-slate-600');
+      });
+      document.getElementById(`cr-tab-${type}`).classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+      document.getElementById(`cr-tab-${type}`).classList.remove('text-slate-600');
+      renderCourierTasks();
+    }
+
+    function renderCourierTasks() {
+      const grid = document.getElementById('courier-tasks-grid');
+      let filtered = orders;
+      if (courierFilter === 'pickup') {
+        filtered = orders.filter(o => o.status === 'pickup_scheduled');
+      } else if (courierFilter === 'delivery') {
+        filtered = orders.filter(o => o.status === 'ready_delivery' || o.status === 'out_delivery');
+      }
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div class="col-span-3 text-center py-12 text-slate-400 text-sm">Tidak ada tugas dalam kategori ini.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(o => {
+        const isPickup = o.status === 'pickup_scheduled';
+        const isReadyDelivery = o.status === 'ready_delivery';
+        const isOutDelivery = o.status === 'out_delivery';
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-mono text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">${o.orderNumber}</span>
+                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full ${getStatusBadgeClass(o.status)}">
+                  ${formatStatusLabel(o.status)}
+                </span>
+              </div>
+              <h4 class="font-bold text-slate-900 text-base">${o.customerName}</h4>
+              <p class="text-xs text-slate-500 mt-0.5">${o.customerPhone}</p>
+              
+              <div class="bg-slate-50 rounded-xl p-3 my-3 text-xs space-y-1.5 border border-slate-100">
+                <p class="text-slate-700 flex items-start gap-1.5">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5"></i>
+                  <span>${o.address}</span>
+                </p>
+                <p class="text-slate-600 flex items-center gap-1.5">
+                  <i data-lucide="package" class="w-3.5 h-3.5 text-brand-500 shrink-0"></i>
+                  <span>${o.serviceName}</span>
+                </p>
+                ${o.notes && o.notes !== '-' ? `
+                  <p class="text-amber-800 bg-amber-50 p-2 rounded-lg text-[11px] font-medium border border-amber-200">
+                    Catatan: ${o.notes}
+                  </p>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Courier Actions -->
+            <div class="pt-3 border-t border-slate-100 space-y-2">
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address)}" target="_blank" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all">
+                <i data-lucide="navigation" class="w-3.5 h-3.5 text-blue-600"></i>
+                <span>Buka Navigasi Google Maps</span>
+              </a>
+
+              ${isPickup ? `
+                <button onclick="confirmPickupByCourier('${o.id}')" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all">
+                  <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                  <span>Konfirmasi Jemput & Foto Barang</span>
+                </button>
+              ` : ''}
+
+              ${isReadyDelivery ? `
+                <button onclick="startDeliveryByCourier('${o.id}')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all">
+                  <i data-lucide="truck" class="w-3.5 h-3.5"></i>
+                  <span>Ambil dari ${o.rackNumber || 'Rak'} & Mulai Antar</span>
+                </button>
+              ` : ''}
+
+              ${isOutDelivery ? `
+                <button onclick="openDeliveryModal('${o.id}')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all">
+                  <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i>
+                  <span>Serah Terima & Tanda Tangan Pelanggan</span>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    async function confirmPickupByCourier(orderId) {
+      if (!confirm('Konfirmasi bahwa barang laundry sudah diambil dari pelanggan?')) return;
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'picked_up',
+            pickupPhoto: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=400&q=80',
+            estimatedWeight: 'Taksiran 4-5 kg'
+          })
+        }).then(r => r.json());
+
+        if (res.success) {
+          showToast('Barang berhasil dijemput! Status terupdate: Picked Up');
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal update status penjemputan', 'error');
+      }
+    }
+
+    async function startDeliveryByCourier(orderId) {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'out_delivery' })
+        }).then(r => r.json());
+
+        if (res.success) {
+          showToast('Pesanan sedang dalam perjalanan antar!');
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal mengubah status antar', 'error');
+      }
+    }
+
+    function openDeliveryModal(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      document.getElementById('delivery-order-id').value = order.id;
+      document.getElementById('delivery-customer-name').innerText = `${order.customerName} (${order.orderNumber})`;
+      clearSignatureCanvas();
+      openModal('modal-courier-delivery');
+    }
+
+    async function handleCourierDeliverySubmit(e) {
+      e.preventDefault();
+      const orderId = document.getElementById('delivery-order-id').value;
+      const signatureData = canvas.toDataURL();
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'completed',
+            paymentStatus: 'paid',
+            deliverySignature: signatureData,
+            deliveryProofPhoto: 'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?auto=format&fit=crop&w=400&q=80'
+          })
+        }).then(r => r.json());
+
+        if (res.success) {
+          closeModal('modal-courier-delivery');
+          showToast('Pengantaran sukses diselesaikan! Bukti serah terima tersimpan.');
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal menyimpan serah terima', 'error');
+      }
+    }
+
+    // Signature Canvas Logic
+    function initSignatureCanvas() {
+      canvas = document.getElementById('signature-canvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#0f172a';
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: clientX - rect.left,
+          y: clientY - rect.top
+        };
+      };
+
+      const start = (e) => {
+        isDrawing = true;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      };
+
+      const draw = (e) => {
+        if (!isDrawing) return;
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      };
+
+      const stop = () => { isDrawing = false; };
+
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stop);
+      canvas.addEventListener('mouseleave', stop);
+
+      canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); });
+      canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+      canvas.addEventListener('touchend', stop);
+    }
+
+    function clearSignatureCanvas() {
+      if (ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 3. MODUL KASIR POS & WORKSHOP
+    // -------------------------------------------------------------
+    function switchCashierSubTab(tab) {
+      document.querySelectorAll('.cashier-subtab').forEach(b => {
+        b.classList.remove('bg-white', 'text-brand-700', 'shadow-sm');
+        b.classList.add('text-slate-600');
+      });
+      document.getElementById(`cashier-tab-${tab}`).classList.add('bg-white', 'text-brand-700', 'shadow-sm');
+      document.getElementById(`cashier-tab-${tab}`).classList.remove('text-slate-600');
+
+      document.getElementById('cashier-view-weighing').classList.add('hidden');
+      document.getElementById('cashier-view-workshop').classList.add('hidden');
+      document.getElementById('cashier-view-tariffs').classList.add('hidden');
+      document.getElementById(`cashier-view-${tab}`).classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+
+    function renderCashierViews() {
+      // 1. Weighing Queue
+      const queue = orders.filter(o => o.status === 'picked_up' || (o.status === 'pickup_scheduled' && o.actualWeight === 0));
+      document.getElementById('weighing-queue-count').innerText = `${queue.length} Menunggu`;
+
+      const queueWrapper = document.getElementById('weighing-queue-table-wrapper');
+      if (queue.length === 0) {
+        queueWrapper.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Semua barang masuk sudah selesai ditimbang.</p>';
+      } else {
+        queueWrapper.innerHTML = `
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
+                <th class="py-3 px-4">No. Order</th>
+                <th class="py-3 px-4">Pelanggan</th>
+                <th class="py-3 px-4">Layanan</th>
+                <th class="py-3 px-4">Kurir Jemput</th>
+                <th class="py-3 px-4">Catatan</th>
+                <th class="py-3 px-4">Aksi Kasir</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${queue.map(o => `
+                <tr class="hover:bg-slate-50/80 transition-all">
+                  <td class="py-3 px-4 font-mono font-bold text-brand-700">${o.orderNumber}</td>
+                  <td class="py-3 px-4 font-bold text-slate-900">${o.customerName}</td>
+                  <td class="py-3 px-4">${o.serviceName}</td>
+                  <td class="py-3 px-4">${o.courierName || '-'}</td>
+                  <td class="py-3 px-4 text-slate-500 max-w-xs truncate">${o.notes}</td>
+                  <td class="py-3 px-4">
+                    <button onclick="openWeighingModal('${o.id}')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm">
+                      <i data-lucide="scale" class="w-3.5 h-3.5"></i> Timbang Riil
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      // 2. Workshop Columns
+      const washingList = orders.filter(o => o.status === 'washing');
+      const ironingList = orders.filter(o => o.status === 'ironing');
+      const readyList = orders.filter(o => o.status === 'ready_delivery');
+
+      document.getElementById('count-washing').innerText = washingList.length;
+      document.getElementById('count-ironing').innerText = ironingList.length;
+      document.getElementById('count-ready').innerText = readyList.length;
+
+      document.getElementById('workshop-washing-list').innerHTML = washingList.length ? washingList.map(o => `
+        <div class="p-3.5 rounded-xl border border-sky-100 bg-sky-50/40 text-xs space-y-2">
+          <div class="flex justify-between font-bold">
+            <span class="font-mono text-sky-800">${o.orderNumber}</span>
+            <span class="text-slate-600">${o.actualWeight} Kg</span>
+          </div>
+          <p class="font-bold text-slate-900">${o.customerName}</p>
+          <button onclick="advanceOrderStatus('${o.id}', 'ironing')" class="w-full py-1.5 bg-white border border-sky-200 text-sky-700 hover:bg-sky-100 rounded-lg font-bold flex items-center justify-center gap-1">
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i> Pindah ke Setrika
+          </button>
+        </div>
+      `).join('') : '<p class="text-[11px] text-slate-400 text-center py-6">Tidak ada mesin cuci aktif.</p>';
+
+      document.getElementById('workshop-ironing-list').innerHTML = ironingList.length ? ironingList.map(o => `
+        <div class="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/40 text-xs space-y-2">
+          <div class="flex justify-between font-bold">
+            <span class="font-mono text-indigo-800">${o.orderNumber}</span>
+            <span class="text-slate-600">${o.actualWeight} Kg</span>
+          </div>
+          <p class="font-bold text-slate-900">${o.customerName}</p>
+          <button onclick="openRackModal('${o.id}')" class="w-full py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg font-bold flex items-center justify-center gap-1">
+            <i data-lucide="archive" class="w-3.5 h-3.5"></i> Alokasikan ke Rak Simpan
+          </button>
+        </div>
+      `).join('') : '<p class="text-[11px] text-slate-400 text-center py-6">Tidak ada antrean setrika.</p>';
+
+      document.getElementById('workshop-ready-list').innerHTML = readyList.length ? readyList.map(o => `
+        <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 text-xs space-y-2">
+          <div class="flex justify-between font-bold">
+            <span class="font-mono text-emerald-800">${o.orderNumber}</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">${o.rackNumber || 'Rak Simpan'}</span>
+          </div>
+          <p class="font-bold text-slate-900">${o.customerName} (${o.actualWeight} Kg)</p>
+          <div class="flex gap-1.5">
+            <button onclick="previewThermalReceipt('${o.id}')" class="flex-1 py-1.5 bg-white border border-emerald-300 text-emerald-800 rounded-lg font-semibold flex items-center justify-center gap-1">
+              <i data-lucide="printer" class="w-3 h-3"></i> Cetak Struk
+            </button>
+          </div>
+        </div>
+      `).join('') : '<p class="text-[11px] text-slate-400 text-center py-6">Rak simpan kosong.</p>';
+
+      // 3. Tariffs catalog
+      document.getElementById('services-grid').innerHTML = services.map(s => `
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-brand-50 text-brand-700 rounded-md border border-brand-200">${s.category}</span>
+            <h4 class="font-bold text-slate-900 text-sm mt-2">${s.name}</h4>
+            <p class="text-xs text-slate-500 mt-1">${s.description}</p>
+          </div>
+          <div class="pt-3 mt-3 border-t border-slate-200 flex items-center justify-between">
+            <span class="text-xs text-slate-500">Estimasi: ${s.durationHours} Jam</span>
+            <span class="text-sm font-black text-brand-700">Rp ${s.price.toLocaleString('id-ID')} / ${s.unit}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openWeighingModal(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      document.getElementById('weigh-order-id').value = order.id;
+      document.getElementById('weigh-order-info').innerText = `${order.orderNumber} - ${order.customerName} (${order.serviceName})`;
+      
+      const srv = services.find(s => s.id === order.serviceId) || services[0];
+      document.getElementById('weigh-unit-price').innerText = `Rp ${srv.price.toLocaleString('id-ID')} / ${srv.unit}`;
+      document.getElementById('weigh-actual-kg').value = order.actualWeight || '';
+      calculateWeighingPrice();
+      openModal('modal-weighing');
+    }
+
+    function calculateWeighingPrice() {
+      const orderId = document.getElementById('weigh-order-id').value;
+      const order = orders.find(o => o.id === orderId);
+      const srv = services.find(s => s.id === (order?.serviceId)) || services[0];
+      const kg = parseFloat(document.getElementById('weigh-actual-kg').value) || 0;
+      const total = Math.round(kg * srv.price);
+      document.getElementById('weigh-total-price').innerText = `Rp ${total.toLocaleString('id-ID')}`;
+    }
+
+    async function handleWeighingSubmit(e) {
+      e.preventDefault();
+      const orderId = document.getElementById('weigh-order-id').value;
+      const actualWeight = parseFloat(document.getElementById('weigh-actual-kg').value);
+      const paymentStatus = document.getElementById('weigh-payment-status').value;
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actualWeight,
+            status: 'washing',
+            paymentStatus
+          })
+        }).then(r => r.json());
+
+        if (res.success) {
+          closeModal('modal-weighing');
+          showToast(`Berat berhasil disimpan: ${actualWeight} Kg. Status beralih ke Cuci.`);
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal menyimpan timbangan', 'error');
+      }
+    }
+
+    function renderRackOptions() {
+      const select = document.getElementById('rack-select');
+      select.innerHTML = racks.map(r => `<option value="${r}">${r}</option>`).join('');
+    }
+
+    function openRackModal(orderId) {
+      document.getElementById('rack-order-id').value = orderId;
+      openModal('modal-assign-rack');
+    }
+
+    async function handleRackSubmit(e) {
+      e.preventDefault();
+      const orderId = document.getElementById('rack-order-id').value;
+      const rackNumber = document.getElementById('rack-select').value;
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rackNumber,
+            status: 'ready_delivery'
+          })
+        }).then(r => r.json());
+
+        if (res.success) {
+          closeModal('modal-assign-rack');
+          showToast(`Pakaian disimpan di ${rackNumber} & siap diantar!`);
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal mengalokasikan rak', 'error');
+      }
+    }
+
+    async function advanceOrderStatus(orderId, newStatus) {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        }).then(r => r.json());
+
+        if (res.success) {
+          showToast(`Status diperbarui ke: ${formatStatusLabel(newStatus)}`);
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal update status', 'error');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 4. MODUL ADMIN DASHBOARD & DISPATCHING
+    // -------------------------------------------------------------
+    function renderAdminDashboard(stats) {
+      if (stats) {
+        document.getElementById('stat-revenue').innerText = `Rp ${stats.totalRevenue.toLocaleString('id-ID')}`;
+        document.getElementById('stat-weight').innerText = `${stats.totalKg} Kg`;
+        document.getElementById('stat-active-orders').innerText = stats.activeOrders;
+        document.getElementById('stat-couriers').innerText = stats.activeCouriers;
+      }
+
+      const tableBody = document.getElementById('admin-orders-table-body');
+      tableBody.innerHTML = orders.map(o => `
+        <tr class="hover:bg-slate-50/80 transition-all">
+          <td class="py-3 px-4 font-mono font-bold text-brand-700">${o.orderNumber}</td>
+          <td class="py-3 px-4">
+            <div class="font-bold text-slate-900">${o.customerName}</div>
+            <div class="text-[11px] text-slate-500">${o.customerPhone}</div>
+          </td>
+          <td class="py-3 px-4 max-w-xs truncate text-slate-600">${o.address}</td>
+          <td class="py-3 px-4">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(o.status)}">
+              ${formatStatusLabel(o.status)}
+            </span>
+          </td>
+          <td class="py-3 px-4 font-medium text-slate-800">${o.courierName || 'Belum ditugaskan'}</td>
+          <td class="py-3 px-4">
+            <select onchange="reassignCourier('${o.id}', this.value)" class="text-[11px] font-semibold border border-slate-300 rounded-lg px-2 py-1 bg-white">
+              ${couriers.map(c => `
+                <option value="${c.id}" ${c.id === o.courierId ? 'selected' : ''}>${c.name}</option>
+              `).join('')}
+            </select>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function reassignCourier(orderId, courierId) {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ courierId })
+        }).then(r => r.json());
+
+        if (res.success) {
+          showToast(`Kurir penanggung jawab berhasil dialihkan`);
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal menetapkan kurir', 'error');
+      }
+    }
+
+    function exportToCSV() {
+      if (orders.length === 0) {
+        showToast('Belum ada transaksi untuk diekspor', 'error');
+        return;
+      }
+      let csv = 'No Order,Nama Pelanggan,No HP,Alamat,Layanan,Berat (Kg),Total (Rp),Status,Pembayaran,Kurir\n';
+      orders.forEach(o => {
+        csv += `"${o.orderNumber}","${o.customerName}","${o.customerPhone}","${o.address}","${o.serviceName}",${o.actualWeight || 0},${o.totalAmount || 0},"${o.status}","${o.paymentStatus}","${o.courierName}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `washpro-laporan-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('File laporan transaksi (CSV) berhasil diunduh!');
+    }
+
+    // -------------------------------------------------------------
+    // THERMAL RECEIPT GENERATOR (58mm/80mm)
+    // -------------------------------------------------------------
+    function previewThermalReceipt(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      const srv = services.find(s => s.id === order.serviceId) || services[0];
+      const receiptContainer = document.getElementById('thermal-receipt-print-area');
+
+      receiptContainer.innerHTML = `
+        <div class="text-center border-b border-dashed border-black pb-3">
+          <div class="text-base font-bold tracking-wider">WASHPRO LAUNDRY</div>
+          <div class="text-[10px]">Jl. Senopati No. 45, Kebayoran Baru</div>
+          <div class="text-[10px]">WhatsApp: 0812-8899-1001</div>
+        </div>
+
+        <div class="text-[10px] space-y-0.5 border-b border-dashed border-black pb-2">
+          <div class="flex justify-between"><span>No: ${order.orderNumber}</span><span>${new Date().toLocaleDateString('id-ID')}</span></div>
+          <div>Pelanggan: <strong>${order.customerName}</strong></div>
+          <div>Kurir: ${order.courierName || 'Outlet'}</div>
+          ${order.rackNumber ? `<div>Lokasi Rak: <strong>${order.rackNumber}</strong></div>` : ''}
+        </div>
+
+        <div class="text-[10px] space-y-1 border-b border-dashed border-black pb-2">
+          <div class="font-bold">${order.serviceName}</div>
+          <div class="flex justify-between">
+            <span>${order.actualWeight ? order.actualWeight + ' Kg x Rp ' + srv.price.toLocaleString('id-ID') : '1 Paket'}</span>
+            <span>Rp ${(order.totalAmount || 0).toLocaleString('id-ID')}</span>
+          </div>
+        </div>
+
+        <div class="text-[11px] font-bold flex justify-between pt-1">
+          <span>TOTAL:</span>
+          <span>Rp ${(order.totalAmount || 0).toLocaleString('id-ID')}</span>
+        </div>
+
+        <div class="text-[10px] flex justify-between border-b border-dashed border-black pb-2">
+          <span>Status Bayar:</span>
+          <span>${order.paymentStatus === 'paid' ? 'LUNAS (PAID)' : 'BELUM LUNAS'}</span>
+        </div>
+
+        <div class="text-center text-[9px] pt-1">
+          <p>Terima kasih atas kunjungan Anda!</p>
+          <p>Simpan struk ini untuk pengambilan/klaim.</p>
+          <div class="font-mono text-center tracking-widest text-[8px] mt-2">||| |||| || |||||| | |||||</div>
+        </div>
+      `;
+
+      openModal('modal-thermal-receipt');
+    }
+
+    // Demo Data Reset
+    async function resetDemoData() {
+      if (!confirm('Apakah Anda yakin ingin mereset semua data simulasi ke kondisi awal?')) return;
+      try {
+        const res = await fetch('/api/reset', { method: 'POST' }).then(r => r.json());
+        if (res.success) {
+          showToast('Data demo berhasil di-reset!');
+          await fetchInitialData();
+        }
+      } catch (err) {
+        showToast('Gagal mereset data', 'error');
+      }
+    }
+
+    // Utilities
+    function formatStatusLabel(st) {
+      const map = {
+        pickup_scheduled: 'Jemput Dijadwalkan',
+        picked_up: 'Sudah Dijemput',
+        weighing: 'Penimbangan Kasir',
+        washing: 'Sedang Cuci / Kering',
+        ironing: 'Sedang Disetrika',
+        ready_delivery: 'Siap di Rak Simpan',
+        out_delivery: 'Sedang Diantar',
+        completed: 'Selesai (Completed)',
+        cancelled: 'Dibatalkan'
+      };
+      return map[st] || st;
+    }
+
+    function getStatusBadgeClass(st) {
+      const map = {
+        pickup_scheduled: 'bg-amber-50 text-amber-700 border border-amber-200',
+        picked_up: 'bg-sky-50 text-sky-700 border border-sky-200',
+        weighing: 'bg-purple-50 text-purple-700 border border-purple-200',
+        washing: 'bg-blue-50 text-blue-700 border border-blue-200',
+        ironing: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+        ready_delivery: 'bg-teal-50 text-teal-700 border border-teal-200',
+        out_delivery: 'bg-orange-50 text-orange-700 border border-orange-200',
+        completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        cancelled: 'bg-rose-50 text-rose-700 border border-rose-200'
+      };
+      return map[st] || 'bg-slate-50 text-slate-600';
+    }
+  </script>
+</body>
+</html>
