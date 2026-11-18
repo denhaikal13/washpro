@@ -6,7 +6,12 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+
+// Gunakan folder /tmp jika berjalan di Vercel agar bisa menyimpan data sementara
+const isVercel = process.env.VERCEL === '1';
+const DATA_FILE = isVercel 
+  ? path.join('/tmp', 'data.json') 
+  : path.join(__dirname, 'data.json');
 
 // Initial Seed Data
 const initialData = {
@@ -33,7 +38,7 @@ const initialData = {
       scheduledPickup: '2026-11-12T09:00:00',
       serviceId: 'srv-1',
       serviceName: 'Kiloan Reguler (Cuci + Setrika)',
-      status: 'pickup_scheduled', // pickup_scheduled, picked_up, weighing, washing, ironing, ready_delivery, out_delivery, completed
+      status: 'pickup_scheduled',
       notes: 'Tolong jangan campur kemeja putih dengan baju berwarna.',
       estimatedWeight: null,
       actualWeight: 0,
@@ -150,6 +155,14 @@ const initialData = {
 // Load or initialize DB
 function getDB() {
   if (!fs.existsSync(DATA_FILE)) {
+    const localSeedFile = path.join(__dirname, 'data.json');
+    if (isVercel && fs.existsSync(localSeedFile)) {
+      try {
+        const seedRaw = fs.readFileSync(localSeedFile, 'utf8');
+        saveDB(JSON.parse(seedRaw));
+        return JSON.parse(seedRaw);
+      } catch (e) {}
+    }
     saveDB(initialData);
     return JSON.parse(JSON.stringify(initialData));
   }
@@ -163,7 +176,11 @@ function getDB() {
 }
 
 function saveDB(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Gagal menyimpan DB:', err);
+  }
 }
 
 // Helpers
@@ -206,7 +223,6 @@ const MIME_TYPES = {
 
 // Server Handler
 const server = http.createServer(async (req, res) => {
-  // CORS Preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
@@ -223,20 +239,16 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/api/')) {
     const db = getDB();
 
-    // GET /api/orders
     if (pathname === '/api/orders' && req.method === 'GET') {
       return sendJSON(res, 200, { success: true, data: db.orders });
     }
 
-    // POST /api/orders - Create new pickup order
     if (pathname === '/api/orders' && req.method === 'POST') {
       try {
         const body = await parseBody(req);
         const orderCount = db.orders.length + 1;
         const padCount = String(orderCount).padStart(3, '0');
         const orderNumber = `WP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${padCount}`;
-
-        // Find service
         const srv = db.services.find(s => s.id === body.serviceId) || db.services[0];
 
         const newOrder = {
@@ -272,7 +284,6 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // PATCH /api/orders/:id - Update order status, weight, rack, payment
     if (pathname.startsWith('/api/orders/') && req.method === 'PATCH') {
       const orderId = pathname.replace('/api/orders/', '');
       const idx = db.orders.findIndex(o => o.id === orderId);
@@ -284,7 +295,6 @@ const server = http.createServer(async (req, res) => {
         const body = await parseBody(req);
         const order = db.orders[idx];
 
-        // Recalculate price if weight is updated
         if (body.actualWeight !== undefined) {
           order.actualWeight = parseFloat(body.actualWeight) || 0;
           const srv = db.services.find(s => s.id === order.serviceId);
@@ -314,22 +324,18 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // GET /api/services
     if (pathname === '/api/services' && req.method === 'GET') {
       return sendJSON(res, 200, { success: true, data: db.services });
     }
 
-    // GET /api/couriers
     if (pathname === '/api/couriers' && req.method === 'GET') {
       return sendJSON(res, 200, { success: true, data: db.couriers });
     }
 
-    // GET /api/racks
     if (pathname === '/api/racks' && req.method === 'GET') {
       return sendJSON(res, 200, { success: true, data: db.racks });
     }
 
-    // GET /api/stats - Executive metrics
     if (pathname === '/api/stats' && req.method === 'GET') {
       const totalRevenue = db.orders
         .filter(o => o.paymentStatus === 'paid')
@@ -354,7 +360,6 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // POST /api/reset - Reset demo data
     if (pathname === '/api/reset' && req.method === 'POST') {
       saveDB(initialData);
       return sendJSON(res, 200, { success: true, message: 'Data demo berhasil di-reset!', data: initialData });
@@ -371,7 +376,6 @@ const server = http.createServer(async (req, res) => {
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        // Fallback to index.html for SPA routing
         fs.readFile(path.join(__dirname, 'public', 'index.html'), (err2, fallbackContent) => {
           if (err2) {
             res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -392,12 +396,17 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-// Ensure DB file exists on startup
 getDB();
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`=======================================================`);
-  console.log(`🚀 WashPro Server berjalan di http://localhost:${PORT}`);
-  console.log(`📦 Sistem Manajemen Laundry & Kurir Terintegrasi Aktif`);
-  console.log(`=======================================================`);
-});
+// Jalankan server.listen hanya jika bukan di Vercel
+if (!isVercel) {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`=======================================================`);
+    console.log(`🚀 WashPro Server berjalan di http://localhost:${PORT}`);
+    console.log(`📦 Sistem Manajemen Laundry & Kurir Terintegrasi Aktif`);
+    console.log(`=======================================================`);
+  });
+}
+
+// Wajib di-export agar Vercel bisa menjalankan server HTTP ini
+export default server;
